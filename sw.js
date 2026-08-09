@@ -1,48 +1,72 @@
-const CACHE_NAME = 'code39-cache-v1';
+const CACHE_NAME = 'code39-cache-v2'; // Mudamos para v2 para forçar o celular a atualizar
 
-// Arquivos que o app precisa para funcionar offline
-const urlsToCache = [
+// Apenas arquivos locais do seu próprio repositório
+const localUrlsToCache = [
   './',
   './index.html',
   './manifest.json',
-  'https://cdn.tailwindcss.com',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css'
+  './icon-192.png', // Lembre-se de subir os ícones para o GitHub
+  './icon-512.png'
 ];
 
-// Instalação: Baixa os arquivos e salva no cache
+// Instalação instantânea
 self.addEventListener('install', event => {
+  self.skipWaiting(); // Força o Service Worker a assumir o controle imediatamente
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Cache aberto');
-        return cache.addAll(urlsToCache);
+        console.log('Arquivos locais em cache');
+        // Usamos catch para não travar a instalação se faltar algum ícone
+        return cache.addAll(localUrlsToCache).catch(err => console.log('Erro ao fazer cache local:', err));
       })
   );
 });
 
-// Interceptador: Quando o app pedir um arquivo, pega do cache primeiro
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Se encontrou no cache, retorna ele. Se não, busca na internet.
-        return response || fetch(event.request);
-      })
-  );
-});
-
-// Limpeza: Apaga caches antigos se você atualizar a versão (v1 para v2)
+// Limpa caches antigos (o v1 que falhou)
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
+          if (cacheName !== CACHE_NAME) {
             return caches.delete(cacheName);
           }
         })
       );
+    })
+  );
+});
+
+// Estratégia de Cache Dinâmico
+self.addEventListener('fetch', event => {
+  // Ignora requisições que não sejam padrão (como extensões)
+  if (event.request.method !== 'GET') return;
+
+  event.respondWith(
+    caches.match(event.request).then(cachedResponse => {
+      // 1. Se o arquivo já está no cache, devolve ele na hora (mesmo sem internet)
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      // 2. Se não está no cache (ex: fontes do FontAwesome, Tailwind CDN), busca na internet
+      return fetch(event.request).then(networkResponse => {
+        // Se a resposta for inválida, apenas a retorna
+        if (!networkResponse || networkResponse.status !== 200 || (networkResponse.type !== 'basic' && networkResponse.type !== 'cors')) {
+          return networkResponse;
+        }
+
+        // 3. Salva uma cópia no cache para a próxima vez que faltar internet
+        const responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, responseToCache);
+        });
+
+        return networkResponse;
+      }).catch(() => {
+        // Se falhar (sem internet e arquivo não está no cache), ignora silenciosamente.
+        console.log('Modo offline restrito. Arquivo não disponível no cache:', event.request.url);
+      });
     })
   );
 });
