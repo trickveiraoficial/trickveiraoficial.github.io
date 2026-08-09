@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Gerador Code 39 Mobile</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#020617">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              500: '#0284c7',
+              600: '#0369a1',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    textarea, input {
+      user-select: text;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+
+<body class="h-full flex flex-col bg-slate-950 text-slate-100 overflow-hidden select-none">
+
+  <!-- Top Header -->
+  <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between shrink-0 shadow-md">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
+        <i class="fa-solid fa-barcode text-xl"></i>
+      </div>
+      <div>
+        <h1 class="text-base font-bold text-white leading-tight">Gerador Code 39</h1>
+        <p class="text-[11px] text-slate-400 font-medium">Conversor Rápido de Produtos</p>
+      </div>
+    </div>
+    
+    <button onclick="toggleSettingsModal()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 active:scale-95 transition-all flex items-center gap-1.5 text-xs font-semibold" title="Ajustes">
+      <i class="fa-solid fa-sliders text-sm text-sky-400"></i>
+      <span class="hidden sm:inline">Ajustes</span>
+    </button>
+  </header>
+
+  <!-- Scrollable Main Content -->
+  <main class="flex-1 overflow-y-auto no-scrollbar p-3.5 sm:p-5 space-y-4 max-w-2xl mx-auto w-full">
+
+    <!-- Input Card -->
+    <div class="bg-slate-900 border border-slate-800/90 rounded-2xl p-4 shadow-xl space-y-3">
+      <div class="flex items-center justify-between">
+        <label for="codes-input" class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-align-left text-sky-400"></i> Código(s) Interno(s)
+        </label>
+        <div class="flex items-center gap-1.5">
+          <button onclick="pasteFromClipboard()" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-lg font-medium active:scale-95 transition-all flex items-center gap-1">
+            <i class="fa-regular fa-paste"></i> Colar
+          </button>
+          <button onclick="clearInput()" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-rose-400 rounded-lg font-medium active:scale-95 transition-all flex items-center gap-1">
+            <i class="fa-regular fa-trash-can"></i> Limpar
+          </button>
+        </div>
+      </div>
+
+      <div class="relative">
+        <textarea id="codes-input" rows="4" 
+          class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm font-mono text-sky-300 placeholder-slate-600 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all resize-none shadow-inner"
+          placeholder="Digite um código por linha&#10;Ex:&#10;1000000&#10;PROD-1001&#10;A-8945"
+          oninput="handleInput()"></textarea>
+        <div id="code-count" class="absolute bottom-2.5 right-3 text-[11px] font-mono text-slate-500 bg-slate-900/90 px-2 py-0.5 rounded-md border border-slate-800">
+          0 código(s)
+        </div>
+      </div>
+
+      <!-- Quick Formatting Helper Tools -->
+      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 pb-0.5">
+        <span class="text-[11px] text-slate-500 font-medium whitespace-nowrap"><i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Atalhos:</span>
+        <button onclick="sanitizeCodes()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium whitespace-nowrap active:scale-95 transition-all border border-slate-700/50">
+          Format A-Z
+        </button>
+        <button onclick="addZeros()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium whitespace-nowrap active:scale-95 transition-all border border-slate-700/50">
+          +0000 (8 Digits)
+        </button>
+        <button onclick="generateSequence()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium whitespace-nowrap active:scale-95 transition-all border border-slate-700/50">
+          +5 Sequenciais
+        </button>
+      </div>
+    </div>
+
+    <!-- Primary Action Button -->
+    <button onclick="processAndGenerate()" class="w-full py-3.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold rounded-2xl shadow-lg shadow-sky-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-base">
+      <i class="fa-solid fa-barcode"></i>
+      <span>Gerar Código de Barras</span>
+    </button>
+
+    <!-- Results Section -->
+    <div class="space-y-3 pt-1">
+      <div class="flex items-center justify-between px-1">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          Resultado (<span id="results-count">0</span>)
+        </h2>
+        <button onclick="downloadAllPNGs()" id="download-all-btn" class="hidden text-xs text-sky-400 hover:underline flex items-center gap-1">
+          <i class="fa-solid fa-file-arrow-down"></i> Baixar Todos (PNG)
+        </button>
+      </div>
+
+      <div id="barcode-output" class="space-y-3">
+        <!-- Initial Empty State -->
+        <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-6 text-center text-slate-500 space-y-2">
+          <i class="fa-solid fa-barcode text-4xl text-slate-700"></i>
+          <p class="text-sm font-medium">Nenhum código gerado</p>
+          <p class="text-xs text-slate-600">Digite um código acima e toque em "Gerar Código de Barras".</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick History Section -->
+    <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-2.5 mt-6">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-clock-rotate-left text-sky-400"></i> Recentes
+        </h3>
+        <button onclick="clearHistory()" class="text-[11px] text-rose-400 hover:underline">
+          Limpar
+        </button>
+      </div>
+      <div id="history-list" class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto no-scrollbar">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL: Fullscreen Optical Reader Mode -->
+  <div id="fullscreen-modal" class="fixed inset-0 bg-black z-50 hidden flex-col items-center justify-center p-4">
+    <div class="absolute top-4 right-4">
+      <button onclick="closeFullscreen()" class="w-11 h-11 rounded-full bg-slate-800 text-white flex items-center justify-center shadow-lg active:scale-90 transition-all">
+        <i class="fa-solid fa-xmark text-xl"></i>
+      </button>
+    </div>
+
+    <div class="bg-white rounded-3xl p-6 w-full max-w-sm flex flex-col items-center justify-center text-black space-y-4 shadow-2xl">
+      <div id="fullscreen-code-title" class="text-2xl font-bold font-mono tracking-widest text-center text-slate-900 break-all">
+        CODIGO
+      </div>
+      
+      <div id="fullscreen-svg-container" class="w-full flex justify-center py-4 bg-white border border-slate-200 rounded-xl">
+        <!-- SVG rendered here -->
+      </div>
+
+      <div class="text-center space-y-1">
+        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Modo Leitor Óptico</p>
+        <p class="text-[11px] text-slate-400">Aumente o brilho do celular para facilitar a leitura por leitores de código de barras.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Settings -->
+  <div id="settings-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-white text-base flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-sky-400"></i> Ajustes de Exibição
+        </h3>
+        <button onclick="toggleSettingsModal()" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block text-slate-400 font-medium mb-1">Altura das Barras (px): <span id="height-val" class="text-sky-400 font-bold">70</span></label>
+          <input type="range" id="cfg-height" min="40" max="140" value="70" oninput="updateConfig()" class="w-full accent-sky-500">
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-medium mb-1">Espessura das Barras (Escala): <span id="scale-val" class="text-sky-400 font-bold">2</span></label>
+          <input type="range" id="cfg-narrow" min="1" max="3" value="2" step="0.5" oninput="updateConfig()" class="w-full accent-sky-500">
+        </div>
+
+        <div class="flex items-center justify-between py-1 border-t border-slate-800 pt-3">
+          <span class="text-slate-300 font-medium">Exibir Texto Legível Abaixo</span>
+          <input type="checkbox" id="cfg-showtext" checked onchange="updateConfig()" class="w-4 h-4 rounded accent-sky-500">
+        </div>
+
+        <div class="flex items-center justify-between py-1">
+          <span class="text-slate-300 font-medium">Vibração ao Tocar</span>
+          <input type="checkbox" id="cfg-vibrate" checked class="w-4 h-4 rounded accent-sky-500">
+        </div>
+      </div>
+
+      <button onclick="toggleSettingsModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl">
+        Concluído
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification Bar -->
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 translate-y-[-20px]">
+    <div id="toast-body" class="bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-medium flex items-center gap-2">
+      <i id="toast-icon" class="fa-solid fa-check-circle text-sky-400"></i>
+      <span id="toast-msg">Mensagem</span>
+    </div>
+  </div>
+
+  <script>
+    // Code 39 Character Pattern Map
+    const C39 = {
+      "0": "nnnwwnwnn", "1": "wnnwnnnnw", "2": "nnwwnnnnw", "3": "wnwwnnnnn", "4": "nnnwwnnnw",
+      "5": "wnnwwnnnn", "6": "nnwwwnnnn", "7": "nnnwnnwnw", "8": "wnnwnnwnn", "9": "nnwwnnwnn",
+      "A": "wnnnnwnnw", "B": "nnwnnwnnw", "C": "wnwnnwnnn", "D": "nnnnwwnnw", "E": "wnnnwwnnn",
+      "F": "nnwnwwnnn", "G": "nnnnnwwnw", "H": "wnnnnwwnn", "I": "nnwnnwwnn", "J": "nnnnwwwnn",
+      "K": "wnnnnnnww", "L": "nnwnnnnww", "M": "wnwnnnnwn", "N": "nnnnwnnww", "O": "wnnnwnnwn",
+      "P": "nnwnwnnwn", "Q": "nnnnnnwww", "R": "wnnnnnwwn", "S": "nnwnnnwwn", "T": "nnnnwnwwn",
+      "U": "wwnnnnnnw", "V": "nwwnnnnnw", "W": "wwwnnnnnn", "X": "nwnnwnnnw", "Y": "wwnnwnnnn",
+      "Z": "nwwnwnnnn", "-": "nwnnnnwnw", ".": "wwnnnnwnn", " ": "nwwnnnwnn", "$": "nwnwnwnnn",
+      "/": "nwnwnnnwn", "+": "nwnnnwnwn", "%": "nnnwnwnwn", "*": "nwnnwnwnn"
+    };
+
+    let config = {
+      height: 70,
+      narrow: 2,
+      showText: true,
+      vibrate: true
+    };
+
+    let generatedCodes = [];
+    let historyItems = JSON.parse(localStorage.getItem('c39_history_simple') || '[]');
+
+    window.onload = function() {
+      handleInput();
+      processAndGenerate();
+      renderHistory();
+    };
+
+    function triggerHaptic() {
+      if (config.vibrate && navigator.vibrate) {
+        navigator.vibrate(20);
+      }
+    }
+
+    function showToast(message, icon = 'fa-check-circle', colorClass = 'text-sky-400') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+
+      toastMsg.innerText = message;
+      toastIcon.className = `fa-solid ${icon} ${colorClass}`;
+
+      toast.classList.remove('opacity-0', 'translate-y-[-20px]');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-[-20px]');
+      }, 2000);
+    }
+
+    function code39svg(text, customHeight = null, customNarrow = null, showTextLabel = null) {
+      const rawText = text.trim().toUpperCase();
+      const validText = rawText.replace(/[^0-9A-Z\-.\s$/+%]/g, '');
+      const fullText = "*" + (validText || "1000000") + "*";
+      
+      const narrow = customNarrow || parseFloat(config.narrow);
+      const wide = narrow * 2.8;
+      const h = customHeight || parseInt(config.height);
+      const displayLabel = showTextLabel !== null ? showTextLabel : config.showText;
+
+      let x = narrow * 8; // Quiet zone
+      let parts = [];
+
+      for (const ch of fullText) {
+        const p = C39[ch];
+        if (!p) continue;
+
+        for (let i = 0; i < 9; i++) {
+          const w = p[i] === 'w' ? wide : narrow;
+          if (i % 2 === 0) {
+            parts.push(`<rect x="${x.toFixed(1)}" y="0" width="${w.toFixed(1)}" height="${h}" fill="#000000"/>`);
+          }
+          x += w;
+        }
+        x += narrow; // Inter-character gap
+      }
+
+      x += narrow * 8;
+
+      let textElement = '';
+      let totalSvgHeight = h;
+
+      if (displayLabel) {
+        totalSvgHeight += 20;
+        textElement = `<text x="${(x / 2).toFixed(1)}" y="${h + 15}" font-family="monospace" font-size="13" font-weight="bold" text-anchor="middle" fill="#000000">${rawText}</text>`;
+      }
+
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${x.toFixed(1)} ${totalSvgHeight}" width="100%" height="100%" style="max-height: ${totalSvgHeight + 10}px; background-color: #ffffff;">
+        <rect width="100%" height="100%" fill="#ffffff" />
+        ${parts.join("")}
+        ${textElement}
+      </svg>`;
+    }
+
+    function handleInput() {
+      const text = document.getElementById('codes-input').value;
+      const lines = text.split('\n').filter(l => l.trim() !== '');
+      document.getElementById('code-count').innerText = `${lines.length} código(s)`;
+    }
+
+    async function pasteFromClipboard() {
+      triggerHaptic();
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          const textarea = document.getElementById('codes-input');
+          textarea.value = textarea.value ? (textarea.value + '\n' + text) : text;
+          handleInput();
+          showToast("Código colado!");
+        }
+      } catch (err) {
+        showToast("Cole o texto manualmente", "fa-exclamation-triangle", "text-amber-400");
+      }
+    }
+
+    function clearInput() {
+      triggerHaptic();
+      document.getElementById('codes-input').value = "";
+      handleInput();
+      processAndGenerate();
+      showToast("Campo limpo");
+    }
+
+    function sanitizeCodes() {
+      triggerHaptic();
+      const textarea = document.getElementById('codes-input');
+      const lines = textarea.value.split('\n').map(line => {
+        return line.toUpperCase().replace(/[^0-9A-Z\-.\s$/+%]/g, '').trim();
+      }).filter(Boolean);
+
+      textarea.value = lines.join('\n');
+      handleInput();
+      showToast("Códigos formatados para Code 39!");
+    }
+
+    function addZeros() {
+      triggerHaptic();
+      const textarea = document.getElementById('codes-input');
+      const lines = textarea.value.split('\n').map(line => {
+        let clean = line.trim();
+        if (clean && !isNaN(clean)) {
+          return clean.padStart(8, '0');
+        }
+        return clean;
+      }).filter(Boolean);
+
+      textarea.value = lines.join('\n');
+      handleInput();
+      showToast("Formatado com 8 dígitos!");
+    }
+
+    function generateSequence() {
+      triggerHaptic();
+      const textarea = document.getElementById('codes-input');
+      let currentVal = 1000000;
+      const lines = textarea.value.split('\n').filter(Boolean);
+      if (lines.length > 0) {
+        const last = parseInt(lines[lines.length - 1]);
+        if (!isNaN(last)) currentVal = last + 1;
+      }
+
+      let newSeq = [];
+      for (let i = 0; i < 5; i++) {
+        newSeq.push(String(currentVal + i));
+      }
+
+      textarea.value = lines.length ? lines.join('\n') + '\n' + newSeq.join('\n') : newSeq.join('\n');
+      handleInput();
+      processAndGenerate();
+      showToast("5 itens gerados em sequência!");
+    }
+
+    function processAndGenerate() {
+      triggerHaptic();
+      const input = document.getElementById('codes-input').value;
+      const rawCodes = input.split(/\n/).map(c => c.trim()).filter(Boolean);
+
+      const downloadBtn = document.getElementById('download-all-btn');
+
+      if (rawCodes.length === 0) {
+        document.getElementById('barcode-output').innerHTML = `
+          <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-6 text-center text-slate-500 space-y-2">
+            <i class="fa-solid fa-barcode text-4xl text-slate-700"></i>
+            <p class="text-sm font-medium">Nenhum código gerado</p>
+            <p class="text-xs text-slate-600">Digite um código acima e toque em "Gerar Código de Barras".</p>
+          </div>`;
+        document.getElementById('results-count').innerText = "0";
+        downloadBtn.classList.add('hidden');
+        return;
+      }
+
+      generatedCodes = rawCodes;
+      document.getElementById('results-count').innerText = rawCodes.length;
+      if (rawCodes.length > 1) {
+        downloadBtn.classList.remove('hidden');
+      } else {
+        downloadBtn.classList.add('hidden');
+      }
+
+      const container = document.getElementById('barcode-output');
+      container.innerHTML = "";
+
+      rawCodes.forEach((code, index) => {
+        saveToHistory(code);
+
+        const card = document.createElement('div');
+        card.className = "bg-slate-900 border border-slate-800/90 rounded-2xl p-3.5 shadow-md hover:border-slate-700 transition-all space-y-2.5";
+        
+        const svgMarkup = code39svg(code);
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+            <span class="font-mono text-sm font-bold text-sky-400 truncate max-w-[180px]">${code}</span>
+            <div class="flex items-center gap-1">
+              <button onclick="copyToClipboard('${encodeURIComponent(code)}')" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800" title="Copiar Texto">
+                <i class="fa-regular fa-copy text-xs"></i>
+              </button>
+              <button onclick="openFullscreen('${encodeURIComponent(code)}')" class="p-2 text-slate-400 hover:text-sky-400 rounded-lg hover:bg-slate-800" title="Modo Zoom / Tela Cheia">
+                <i class="fa-solid fa-expand text-xs"></i>
+              </button>
+              <button onclick="downloadPNG('${encodeURIComponent(code)}')" class="p-2 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-800" title="Baixar PNG">
+                <i class="fa-solid fa-download text-xs"></i>
+              </button>
+            </div>
+          </div>
+          <div class="bg-white p-2.5 rounded-xl flex items-center justify-center overflow-x-auto no-scrollbar cursor-pointer" onclick="openFullscreen('${encodeURIComponent(code)}')">
+            ${svgMarkup}
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    function openFullscreen(encodedCode) {
+      triggerHaptic();
+      const code = decodeURIComponent(encodedCode);
+      document.getElementById('fullscreen-code-title').innerText = code;
+      
+      const container = document.getElementById('fullscreen-svg-container');
+      container.innerHTML = code39svg(code, 100, 2.5, true);
+
+      const modal = document.getElementById('fullscreen-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeFullscreen() {
+      triggerHaptic();
+      const modal = document.getElementById('fullscreen-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function copyToClipboard(encodedCode) {
+      triggerHaptic();
+      const code = decodeURIComponent(encodedCode);
+      const textarea = document.createElement('textarea');
+      textarea.value = code;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      showToast("Código copiado!");
+    }
+
+    function downloadPNG(encodedCode) {
+      triggerHaptic();
+      const code = decodeURIComponent(encodedCode);
+      const svgString = code39svg(code, 90, 2.5, true);
+      
+      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const URL = window.URL || window.webkitURL || window;
+      const blobURL = URL.createObjectURL(blob);
+
+      const image = new Image();
+      image.onload = function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width + 40;
+        canvas.height = image.height + 40;
+        const context = canvas.getContext('2d');
+        
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 20, 20);
+
+        const png = canvas.toDataURL('image/png');
+        const downloadLink = document.createElement('a');
+        downloadLink.href = png;
+        downloadLink.download = `CODE39_${code}.png`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        showToast("PNG baixado!");
+      };
+
+      image.src = blobURL;
+    }
+
+    function downloadAllPNGs() {
+      if (generatedCodes.length === 0) return;
+      showToast("Baixando imagens...", "fa-download");
+      generatedCodes.forEach((code, idx) => {
+        setTimeout(() => downloadPNG(encodeURIComponent(code)), idx * 250);
+      });
+    }
+
+    function saveToHistory(code) {
+      if (!historyItems.includes(code)) {
+        historyItems.unshift(code);
+        if (historyItems.length > 25) historyItems.pop();
+        localStorage.setItem('c39_history_simple', JSON.stringify(historyItems));
+        renderHistory();
+      }
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('history-list');
+
+      if (historyItems.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-500 py-1">Nenhum item recente.</p>';
+        return;
+      }
+
+      container.innerHTML = historyItems.map(item => `
+        <button onclick="useHistoryCode('${item}')" class="px-2.5 py-1 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-mono font-medium text-sky-400 active:scale-95 transition-all">
+          ${item}
+        </button>
+      `).join('');
+    }
+
+    function useHistoryCode(code) {
+      triggerHaptic();
+      const textarea = document.getElementById('codes-input');
+      const lines = textarea.value.split('\n').filter(Boolean);
+      if (!lines.includes(code)) {
+        lines.push(code);
+        textarea.value = lines.join('\n');
+      }
+      handleInput();
+      processAndGenerate();
+      showToast("Adicionado ao gerador!");
+    }
+
+    function clearHistory() {
+      triggerHaptic();
+      historyItems = [];
+      localStorage.removeItem('c39_history_simple');
+      renderHistory();
+      showToast("Histórico limpo");
+    }
+
+    function toggleSettingsModal() {
+      triggerHaptic();
+      const modal = document.getElementById('settings-modal');
+      if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      } else {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function updateConfig() {
+      config.height = document.getElementById('cfg-height').value;
+      config.narrow = document.getElementById('cfg-narrow').value;
+      config.showText = document.getElementById('cfg-showtext').checked;
+
+      document.getElementById('height-val').innerText = config.height;
+      document.getElementById('scale-val').innerText = config.narrow;
+
+      processAndGenerate();
+    }
+  </script>
+
+<script>
+  // Registra o Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(registration => {
+          console.log('ServiceWorker registrado com sucesso no escopo: ', registration.scope);
+        })
+        .catch(error => {
+          console.log('Falha ao registrar o ServiceWorker: ', error);
+        });
+    });
+  }
+</script>
+</body>
+</html>
